@@ -67,7 +67,8 @@ FEATURE_NAMES = [
     "external_resources_count", "form_action_external",
 ]
 
-# Sentinel used when a live network signal could not be resolved.
+# Returns -1 when WHOIS is unavailable. Model trained on -1 as
+# class-neutral sentinel — does not bias toward phishing.
 UNKNOWN_DOMAIN_AGE = -1
 
 

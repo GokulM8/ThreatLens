@@ -127,14 +127,33 @@ def _generate_phishing_url() -> tuple:
     return url, live_signals
 
 
+def _inject_unknown_domain_age(rows: list, fraction: float = 0.15) -> None:
+    """Overwrites domain_age_proxy with the UNKNOWN_DOMAIN_AGE sentinel on a
+    random sample of rows, in place. Called separately per class with the
+    same fraction so the sentinel ends up class-neutral in the training
+    data — without this, -1 never appears during training (only the
+    label-correlated 400-6000 / 1-300 ranges do), so the model previously
+    extrapolated it as "below the freshest phishing domain" i.e. maximally
+    suspicious, rather than uninformative."""
+    sample_size = round(len(rows) * fraction)
+    for row in random.sample(rows, sample_size):
+        row["domain_age_proxy"] = UNKNOWN_DOMAIN_AGE
+
+
 def generate_synthetic_dataset(n_legit: int = 500, n_phishing: int = 500) -> pd.DataFrame:
-    rows = []
+    legit_rows = []
     for _ in range(n_legit):
         url, signals = _generate_legit_url()
-        rows.append({"url": url, "label": 0, **dict(zip(LIVE_SIGNAL_COLUMNS, signals))})
+        legit_rows.append({"url": url, "label": 0, **dict(zip(LIVE_SIGNAL_COLUMNS, signals))})
+    phishing_rows = []
     for _ in range(n_phishing):
         url, signals = _generate_phishing_url()
-        rows.append({"url": url, "label": 1, **dict(zip(LIVE_SIGNAL_COLUMNS, signals))})
+        phishing_rows.append({"url": url, "label": 1, **dict(zip(LIVE_SIGNAL_COLUMNS, signals))})
+
+    _inject_unknown_domain_age(legit_rows)
+    _inject_unknown_domain_age(phishing_rows)
+
+    rows = legit_rows + phishing_rows
     random.shuffle(rows)
     return pd.DataFrame(rows)
 

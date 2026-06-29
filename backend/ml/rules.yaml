@@ -1,0 +1,71 @@
+# ThreatLens heuristic rule overlay — evaluated post-ML, on top of the
+# RandomForest/XGBoost risk score. All thresholds live here, not in Python.
+
+thresholds:
+  phishing_score: 5
+  suspicious_score: 2
+  ml_high_confidence: 0.8
+
+rules:
+  - name: url_length_over_100
+    description: "URL length exceeds 100 characters"
+    feature: url_length
+    operator: ">"
+    value: 100
+    score: 2
+
+  - name: at_symbol_present
+    description: "'@' symbol present in URL (host-spoofing trick)"
+    feature: at_count
+    operator: ">"
+    value: 0
+    score: 2
+
+  - name: ip_in_url
+    description: "Hostname is a raw IP address"
+    feature: ip_in_url
+    operator: "=="
+    value: 1
+    score: 2
+
+  - name: no_https
+    description: "URL does not use HTTPS"
+    feature: https_present
+    operator: "=="
+    value: 0
+    score: 1
+
+  - name: excessive_subdomain_depth
+    description: "More than 2 subdomains (deep nesting trick)"
+    feature: subdomain_depth
+    operator: ">"
+    value: 2
+    score: 1
+
+  - name: tld_suspicious
+    description: "Top-level domain is commonly abused for phishing (.tk, .xyz, .top, etc.)"
+    feature: tld_suspicious
+    operator: "=="
+    value: 1
+    score: 1
+
+  - name: shortening_service
+    description: "URL uses a known link-shortening service"
+    feature: shortening_service
+    operator: "=="
+    value: 1
+    score: 1
+
+  - name: punycode_present
+    description: "Hostname uses punycode (xn--) encoding, common in homograph attacks"
+    feature: punycode_present
+    operator: "=="
+    value: 1
+    score: 2
+
+  - name: form_action_external
+    description: "Page submits its form to a different domain than the one in the address bar"
+    feature: form_action_external
+    operator: "=="
+    value: 1
+    score: 2

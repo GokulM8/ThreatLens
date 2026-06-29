@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+scikit-learn
+xgboost
+shap
+numpy
+pandas
+pyyaml
+joblib
+requests
+python-whois
+Pillow
+pdfplumber
+beautifulsoup4
+python-multipart
+supabase
+python-dotenv

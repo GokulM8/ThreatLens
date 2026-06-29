@@ -1,0 +1,67 @@
+# Keyword/phrase heuristic overlay for NLP phishing-text detection.
+# Applied on top of the TF-IDF + Logistic Regression text classifier.
+
+thresholds:
+  phishing_score: 5
+  suspicious_score: 2
+  ml_high_confidence: 0.8
+
+keyword_groups:
+  - name: guaranteed_returns
+    score: 2
+    phrases:
+      - "guaranteed return"
+      - "guaranteed profit"
+      - "double your money"
+      - "risk-free return"
+      - "no risk"
+      - "100% profit"
+      - "assured return"
+
+  - name: urgency_pressure
+    score: 1
+    phrases:
+      - "act now"
+      - "limited time"
+      - "act immediately"
+      - "expires today"
+      - "last chance"
+      - "hurry up"
+      - "before it's too late"
+
+  - name: unofficial_channel
+    score: 2
+    phrases:
+      - "whatsapp group"
+      - "telegram group"
+      - "join our group"
+      - "private group"
+      - "dm me"
+
+  - name: credential_harvesting
+    score: 2
+    phrases:
+      - "verify your account"
+      - "confirm your otp"
+      - "share your otp"
+      - "update your kyc"
+      - "click here to verify"
+      - "suspended unless"
+      - "blocked unless"
+
+  - name: impersonation_claim
+    score: 1
+    phrases:
+      - "sebi registered"
+      - "rbi approved"
+      - "government scheme"
+      - "official partner of"
+
+  - name: unrealistic_tip
+    score: 2
+    phrases:
+      - "secret stock tip"
+      - "insider tip"
+      - "multibagger stock"
+      - "jackpot stock"
+      - "100x return"

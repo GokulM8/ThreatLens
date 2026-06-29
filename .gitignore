@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+backend/ml/artifacts/*.pkl
+backend/data/communications_registry.json
+ml/data/*.csv
+
+.DS_Store

@@ -1,5 +1,6 @@
-"""Shared Supabase client. Returns None when SUPABASE_URL/SUPABASE_SERVICE_KEY
-aren't configured, so routers can fall back to local/offline behavior."""
+"""Shared Supabase client. Returns None when the URL/service key aren't
+configured, so routers can fall back to local/offline behavior instead of
+crashing at import time."""
 import os
 
 try:
@@ -18,8 +19,11 @@ def get_supabase_client():
         return _client
     _checked = True
 
-    url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_SERVICE_KEY")
+    # NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are the canonical
+    # names going forward; SUPABASE_URL / SUPABASE_SERVICE_KEY are kept as a
+    # fallback for any existing backend-only .env files.
+    url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY")
     if create_client and url and key:
         _client = create_client(url, key)
     return _client

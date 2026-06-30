@@ -4,8 +4,8 @@
 
 html,
 body {
-  background-color: #060a0d;
-  color: #c8e0e8;
+  background-color: #f0f2f5;
+  color: #111111;
 }
 
 * {
@@ -18,6 +18,6 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #0e1820;
+  background-color: #eeeeee;
   border-radius: 3px;
 }

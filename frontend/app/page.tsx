@@ -1,84 +1,51 @@
-"use client";
+import Link from "next/link";
+import { Github } from "lucide-react";
+import LandingNav from "@/components/layout/LandingNav";
+import { CustomCursor, MouseGlow } from "@/components/ui/animations";
+import HeroSection from "@/components/landing/HeroSection";
+import ProblemSection from "@/components/landing/ProblemSection";
+import FeaturesSection from "@/components/landing/FeaturesSection";
+import HowItWorksSection from "@/components/landing/HowItWorksSection";
+import DemoSection from "@/components/landing/DemoSection";
+import CtaSection from "@/components/landing/CtaSection";
 
-import { useCallback, useEffect, useState } from "react";
-import Topnav, { ScanMode } from "@/components/Topnav";
-import LeftPanel from "@/components/LeftPanel";
-import RightPanel from "@/components/RightPanel";
-import ScanModal from "@/components/ScanModal";
-import { fetchDashboardStats } from "@/lib/api";
-import { DashboardStats, ShapContribution, UrlAnalysisResult } from "@/lib/types";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-const EMPTY_STATS: DashboardStats = {
-  aggregate_risk_score: 0,
-  total_scans: 0,
-  scans_count: 0,
-  exchanges_count: 0,
-  phishing_count: 0,
-  deepfake_count: 0,
-  all_threats_pct: 0,
-  detection_rate: 0,
-  false_positive_rate: 0,
-  timeline: [],
-  active_threats: [],
-  scan_history: [],
-};
-
-export default function Home() {
-  const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
-  const [activeTab, setActiveTab] = useState<ScanMode>("overview");
-  const [modalOpen, setModalOpen] = useState(false);
-
-  const [lastScanSubject, setLastScanSubject] = useState("No scan yet");
-  const [lastScanRiskScore, setLastScanRiskScore] = useState(0);
-  const [lastScanShap, setLastScanShap] = useState<ShapContribution[]>([]);
-
-  const refreshStats = useCallback(() => {
-    fetchDashboardStats()
-      .then(setStats)
-      .catch(() => setStats(EMPTY_STATS));
-  }, []);
-
-  useEffect(() => {
-    refreshStats();
-  }, [refreshStats]);
-
-  function handleTabChange(tab: ScanMode) {
-    setActiveTab(tab);
-    if (tab !== "overview") setModalOpen(true);
-  }
-
-  function handleUrlResult(result: UrlAnalysisResult) {
-    setLastScanSubject(result.url);
-    setLastScanRiskScore(result.risk_score);
-    setLastScanShap(result.shap_contributions);
-  }
-
+export default function LandingPage() {
   return (
-    <div className="flex min-h-screen flex-col rounded-card border border-hair border-border bg-bg">
-      <Topnav activeTab={activeTab} onTabChange={handleTabChange} />
+    <div className="min-h-screen bg-page" style={{ cursor: "none" }}>
+      <CustomCursor />
+      <MouseGlow />
+      <LandingNav />
 
-      <div className="grid flex-1" style={{ gridTemplateColumns: "1fr 300px" }}>
-        <LeftPanel stats={stats} onNewScan={() => setModalOpen(true)} />
-        <RightPanel
-          stats={stats}
-          lastScanSubject={lastScanSubject}
-          lastScanRiskScore={lastScanRiskScore}
-          lastScanShap={lastScanShap}
-          onAnalyzeDeeper={() => setModalOpen(true)}
-        />
-      </div>
+      <HeroSection />
+      <ProblemSection />
+      <FeaturesSection />
+      <HowItWorksSection />
+      <DemoSection />
+      <CtaSection />
 
-      {modalOpen && (
-        <ScanModal
-          initialTab={activeTab}
-          onClose={() => {
-            setModalOpen(false);
-            setActiveTab("overview");
-          }}
-          onUrlResult={handleUrlResult}
-          onAnyResult={refreshStats}
-        />
-      )}
+      <footer className="border-t border-hair border-border bg-card px-6 py-8">
+        <div className="mx-auto flex max-w-5xl items-center justify-between">
+          <p className="text-xs text-text-muted">© {new Date().getFullYear()} ThreatLens. All rights reserved.</p>
+          <div className="flex items-center gap-5 text-xs text-text-muted">
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 hover:text-text-primary"
+            >
+              <Github size={13} /> GitHub
+            </a>
+            <a href={`${API_URL}/docs`} target="_blank" rel="noreferrer" className="hover:text-text-primary">
+              API Docs
+            </a>
+            <Link href="/dashboard" className="hover:text-text-primary">
+              Dashboard
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

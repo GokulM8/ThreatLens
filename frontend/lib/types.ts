@@ -1,6 +1,6 @@
 export type UrlVerdict = "SAFE" | "SUSPICIOUS" | "PHISHING";
 export type MediaVerdict = "SYNTHETIC_SUSPECTED" | "INCONCLUSIVE" | "LIKELY_AUTHENTIC";
-export type AnyVerdict = UrlVerdict | MediaVerdict;
+export type AnyVerdict = UrlVerdict | MediaVerdict | string;
 
 export interface FiredRule {
   name: string;
@@ -67,6 +67,7 @@ export interface CommunicationVerifyResult {
   note?: string;
 }
 
+// ---- Raw shape of GET /api/dashboard/stats (backend/routers/dashboard.py) ----
 export interface TimelinePoint {
   date: string;
   phishing_count: number;
@@ -92,7 +93,7 @@ export interface ScanHistoryRow {
   timestamp: string;
 }
 
-export interface DashboardStats {
+export interface DashboardStatsRaw {
   aggregate_risk_score: number;
   total_scans: number;
   scans_count: number;
@@ -105,4 +106,39 @@ export interface DashboardStats {
   timeline: TimelinePoint[];
   active_threats: ActiveThreat[];
   scan_history: ScanHistoryRow[];
+}
+
+// ---- UI-facing shape consumed by the dashboard components ----
+// Derived entirely from DashboardStatsRaw in lib/api.ts — see comments there
+// for exactly how accuracy / high_risk_count map onto real API fields (the
+// backend has no literal "accuracy" or "high_risk_count" field).
+export interface WeekPoint {
+  date: string;
+  thisWeek: number;
+  priorWeek: number;
+}
+
+export interface DashboardStats {
+  phishing_count: number;
+  deepfake_count: number;
+  accuracy: number;
+  total_scans: number;
+  high_risk_count: number;
+  high_risk_delta_pct: number | null;
+  recent_scans: ScanHistoryRow[];
+  active_threats: ActiveThreat[];
+  timeline: WeekPoint[];
+}
+
+// Last-scan result shown in the right-panel ScanResultCard / analyze tabs.
+// Normalized across the three analyze endpoints, which return different
+// field shapes (UrlAnalysisResult.shap_contributions vs
+// ContentAnalysisResult.fired_rules vs MediaAnalysisResult.reasons).
+export interface LastScanResult {
+  subject: string;
+  verdict: string;
+  riskScore: number;
+  level: "high" | "medium" | "safe";
+  shap: ShapContribution[];
+  firedRules: FiredRule[];
 }

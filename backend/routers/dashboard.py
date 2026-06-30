@@ -1,4 +1,5 @@
 import hashlib
+from collections import defaultdict
 
 from fastapi import APIRouter
 
@@ -47,6 +48,29 @@ def _model_metrics_safe() -> dict:
         return {}
 
 
+def _build_timeline(scans: list, days: int) -> list:
+    """Groups already-fetched scans by UTC day (the timestamp's date
+    portion). Derived live from `scans` rather than the `threat_stats`
+    table, since that table is only ever populated by a separate
+    refresh_threat_stats() call (a daily cron/Edge Function per
+    supabase/schema.sql) — without anyone actually running that job, the
+    timeline would always come back empty even with real scan data."""
+    buckets: dict = defaultdict(lambda: {"phishing_count": 0, "deepfake_count": 0, "total_scans": 0})
+    for s in scans:
+        timestamp = s.get("timestamp")
+        if not timestamp:
+            continue
+        day = timestamp[:10]
+        bucket = buckets[day]
+        bucket["total_scans"] += 1
+        if s.get("verdict") == "PHISHING":
+            bucket["phishing_count"] += 1
+        if s.get("type") == "media" and s.get("verdict") == "SYNTHETIC_SUSPECTED":
+            bucket["deepfake_count"] += 1
+
+    return [{"date": day, **buckets[day]} for day in sorted(buckets)[-days:]]
+
+
 @router.get("/stats")
 def dashboard_stats(scan_limit: int = 200, timeline_days: int = 7):
     model_metrics = _model_metrics_safe()
@@ -71,15 +95,6 @@ def dashboard_stats(scan_limit: int = 200, timeline_days: int = 7):
 
         communications_resp = client.table("communications").select("source").execute()
         exchanges_count = len({row["source"] for row in (communications_resp.data or [])})
-
-        timeline_resp = (
-            client.table("threat_stats")
-            .select("*")
-            .order("date", desc=True)
-            .limit(timeline_days)
-            .execute()
-        )
-        timeline = list(reversed(timeline_resp.data or []))
     except Exception:
         return {**EMPTY_STATS, **model_derived_stats}
 
@@ -129,15 +144,7 @@ def dashboard_stats(scan_limit: int = 200, timeline_days: int = 7):
         "deepfake_count": deepfake_count,
         "all_threats_pct": all_threats_pct,
         **model_derived_stats,
-        "timeline": [
-            {
-                "date": row.get("date"),
-                "phishing_count": row.get("phishing_count", 0),
-                "deepfake_count": row.get("deepfake_count", 0),
-                "total_scans": row.get("total_scans", 0),
-            }
-            for row in timeline
-        ],
+        "timeline": _build_timeline(scans, timeline_days),
         "active_threats": active_threats,
         "scan_history": scan_history,
     }

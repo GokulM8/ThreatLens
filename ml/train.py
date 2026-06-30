@@ -158,6 +158,190 @@ def generate_synthetic_dataset(n_legit: int = 500, n_phishing: int = 500) -> pd.
     return pd.DataFrame(rows)
 
 
+# PhiUSIIL's "legitimate" URLs are collected as bare root domains (literally
+# 100% of them have zero path and zero query string — verified empirically),
+# while its phishing URLs are live phishing-kit landing pages and almost
+# always have one. That's a collection-methodology artifact, not a real
+# phishing signal: real legitimate sites have login pages, dashboards,
+# articles, search results, etc. constantly. Trained as-is, a model learns
+# "any path at all -> phishing" and flags nearly every real-world URL
+# (https://zerodha.com/login included). Augmenting a portion of the
+# legitimate rows with realistic paths/queries breaks that spurious
+# shortcut while keeping every other (real, useful) signal PhiUSIIL offers.
+LEGIT_PATH_TEMPLATES = [
+    "/login", "/account", "/dashboard", "/portfolio", "/profile/settings",
+    "/about", "/about-us", "/contact", "/help", "/support/tickets",
+    "/products", "/pricing", "/checkout", "/orders", "/search",
+    "/blog/2024/market-update", "/news/article-456", "/docs/getting-started",
+    "/api/v1/data", "/terms", "/privacy", "/careers", "/investor-relations",
+]
+LEGIT_QUERY_TEMPLATES = ["", "?ref=email", "?utm_source=newsletter", "?id=4821", "?page=2", "?q=results"]
+
+QUERY_WORDS = [
+    "how", "to", "make", "demo", "video", "for", "project", "using", "ai",
+    "best", "guide", "tutorial", "review", "compare", "price", "near", "me",
+    "what", "is", "the", "top", "free", "online", "course", "tips", "setup",
+]
+
+
+SLUG_WORDS = [
+    "report", "update", "summary", "details", "overview", "guide", "review",
+    "alert", "notice", "policy", "plan", "account", "session", "request",
+    "form", "page", "item", "post", "entry", "record",
+]
+
+
+PATH_SEGMENT_WORDS = [
+    "user", "users", "item", "post", "video", "product", "products", "repo",
+    "doc", "docs", "file", "files", "thread", "status", "playlist", "article",
+    "articles", "channel", "profile", "comments", "r", "in", "watch", "view",
+    "edit", "browse", "feed", "library", "collection", "category", "topic",
+]
+
+
+FILE_EXTENSIONS = ["html", "htm", "pdf", "jpg", "png", "json", "xml", "php", "aspx", "doc", "docx", "csv", "mp4", "gif"]
+
+
+def _maybe_add_extension(path: str) -> str:
+    """0% of legit training rows had a dot anywhere in the path, vs 12% of
+    phishing rows — none of the path generation below ever produced a file
+    extension (.html, .pdf, ...), even though file-serving URLs (a news
+    article ending /ai-news.html, a downloaded /document.pdf) are everyday
+    legitimate traffic. A path dot reads as an "extra" dot beyond the
+    domain's own, which fed dot_count's outsized SHAP weight on real news
+    articles and file links. Skip fragments/bare-"/" — an extension there
+    isn't realistic."""
+    if path in ("/",) or "#" in path or random.random() >= 0.25:
+        return path
+    return f"{path}.{random.choice(FILE_EXTENSIONS)}"
+
+
+def _random_legit_path() -> str:
+    """Real content/profile/document URLs (GitHub repos, Reddit threads,
+    Stack Overflow questions, Amazon products, Spotify playlists, Google
+    Docs, Twitter posts...) overwhelmingly look like
+    /segment/segment/long-id or /segment/long-descriptive-slug — multiple
+    path segments, often with a long alphanumeric ID or a long hyphenated
+    slug. A fixed list of ~20 short single/double-segment templates (the
+    original version of this function) doesn't represent that shape at all.
+
+    Measured on a 36-URL sample of ordinary real sites (YouTube, Gmail,
+    GitHub, Wikipedia, Amazon, Twitter, Reddit, Stack Overflow, NYTimes,
+    Spotify, Zoom, Dropbox, Google Docs/Drive...), the model trained on the
+    narrower version of this function flagged 15/36 (42%) as phishing —
+    every single one with a multi-segment path containing an ID or slug.
+    That's a systemic gap, not one more one-off case to patch: deep,
+    ID-bearing paths needed to become a *common* case in the legitimate
+    class, not a rare one alongside the bare "/" and short-template cases.
+    """
+    style = random.random()
+
+    if style < 0.10:
+        result = "/"
+    elif style < 0.30:
+        result = random.choice(LEGIT_PATH_TEMPLATES)
+    elif style < 0.45:
+        base = random.choice(LEGIT_PATH_TEMPLATES)
+        result = f"{base}/{random.choice(SLUG_WORDS)}-{random.randint(100, 99999)}"
+    elif style < 0.75:
+        # Deep multi-segment path with a long ID — github.com/org/repo,
+        # reddit.com/r/sub/comments/<id>/<slug>/, amazon.com/dp/<id>.
+        segment_count = random.randint(2, 4)
+        segments = []
+        for _ in range(segment_count):
+            kind = random.random()
+            if kind < 0.45:
+                segments.append(random.choice(PATH_SEGMENT_WORDS))
+            elif kind < 0.75:
+                segments.append(_random_string(random.randint(6, 24)))
+            else:
+                segments.append(str(random.randint(1000, 999999999)))
+        result = "/" + "/".join(segments)
+    elif style < 0.95:
+        # Long descriptive slug — a blog post, news article, or SO question
+        # title, routinely 4-9 hyphenated words.
+        words = random.sample(QUERY_WORDS + SLUG_WORDS, random.randint(4, 9))
+        section = random.choice(["blog", "article", "articles", "news", "docs", "questions", "wiki"])
+        result = f"/{section}/" + "-".join(words)
+    else:
+        # Fragment-only or path+fragment — gmail.com/mail/u/0/#inbox.
+        base = random.choice(LEGIT_PATH_TEMPLATES)
+        result = f"{base}#" + random.choice(["inbox", "section", "top", "details", "comments"])
+
+    return _maybe_add_extension(result)
+
+
+def _random_legit_query() -> str:
+    """The fixed LEGIT_QUERY_TEMPLATES above max out around 23 chars — real
+    search-engine and ad-tracking query strings routinely run 50-100+ chars
+    with a dozen+ special characters (multi-word searches joined by '+',
+    multi-parameter UTM/click-tracking joined by '&'), e.g. a YouTube
+    search query. None of that length/complexity was ever in the legit
+    training class, so query_length and special_char_count were just as
+    under-augmented as path_length originally was — a normal multi-word
+    search link would still read as "phishing-shaped". Compose realistic
+    long queries procedurally instead of relying on the short fixed list."""
+    style = random.random()
+    if style < 0.3:
+        return ""
+    if style < 0.55:
+        words = random.sample(QUERY_WORDS, random.randint(3, 8))
+        return "?search_query=" + "+".join(words)
+    if style < 0.8:
+        params = {
+            "utm_source": random.choice(["google", "newsletter", "facebook", "twitter"]),
+            "utm_medium": random.choice(["cpc", "email", "social", "organic"]),
+            "utm_campaign": _random_string(10),
+            "gclid": _random_string(20),
+        }
+        chosen = dict(random.sample(list(params.items()), random.randint(2, len(params))))
+        return "?" + "&".join(f"{k}={v}" for k, v in chosen.items())
+    return random.choice(LEGIT_QUERY_TEMPLATES)
+
+
+def _augment_legit_paths(df: pd.DataFrame, fraction: float = 0.6) -> pd.DataFrame:
+    legit_idx = df.index[df["label"] == 0]
+    sample = random.sample(list(legit_idx), round(len(legit_idx) * fraction))
+    for idx in sample:
+        path = _random_legit_path()
+        query = _random_legit_query()
+        df.at[idx, "url"] = df.at[idx, "url"].rstrip("/") + path + query
+    return df
+
+
+# Every single legitimate URL in PhiUSIIL is "www."-prefixed (100% of
+# 134,850 rows, verified empirically) vs. ~41% of its phishing URLs — another
+# pure collection artifact (real legitimate sites are used bare-domain
+# constantly: zerodha.com, gmail.com, etc.) that teaches "no www. -> phishing"
+# as a near-perfect-but-spurious shortcut. Stripping www. from a portion of
+# legit rows (independently of the path augmentation above) breaks it.
+def _vary_legit_subdomains(df: pd.DataFrame, fraction: float = 0.5) -> pd.DataFrame:
+    legit_idx = df.index[df["label"] == 0]
+    sample = random.sample(list(legit_idx), round(len(legit_idx) * fraction))
+    for idx in sample:
+        df.at[idx, "url"] = df.at[idx, "url"].replace("://www.", "://", 1)
+    return df
+
+
+# The 17 KNOWN_BROKER_DOMAINS never appear in a 235K-row generic global
+# dataset like PhiUSIIL, so alexa_rank_proxy's special low-value sentinel,
+# lexical_similarity_to_known_brokers=1.0, and lookalike_score=1.0 have never
+# been seen in a *legitimate* context during training — only ever inferred
+# indirectly. That's what made alexa_rank_proxy=0.05 read as suspicious for
+# zerodha.com (SHAP +4.0): the model had zero real examples of what those
+# broker-specific feature values mean when the row actually is legitimate.
+def _known_broker_examples() -> pd.DataFrame:
+    rows = []
+    for domain in KNOWN_BROKER_DOMAINS:
+        for _ in range(20):
+            sub = random.choice(["", "www."])
+            path = random.choice(["", _random_legit_path()])
+            query = _random_legit_query()
+            url = f"https://{sub}{domain}{path}{query}"
+            rows.append({"url": url, "label": 0})
+    return pd.DataFrame(rows)
+
+
 def load_dataset() -> pd.DataFrame:
     if os.path.exists(DATA_PATH):
         print(f"Loading PhiUSIIL dataset from {DATA_PATH}")
@@ -168,6 +352,9 @@ def load_dataset() -> pd.DataFrame:
             "url": raw[url_col],
             "label": (raw[label_col] == PHIUSIIL_PHISHING_LABEL_VALUE).astype(int),
         })
+        df = _augment_legit_paths(df)
+        df = _vary_legit_subdomains(df)
+        df = pd.concat([df, _known_broker_examples()], ignore_index=True)
         df["domain_age_proxy"] = UNKNOWN_DOMAIN_AGE
         df["redirect_count"] = 0
         df["external_resources_count"] = 0

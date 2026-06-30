@@ -26,6 +26,15 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split
 
+# The synthetic-augmentation functions below (path/query/subdomain variation)
+# draw from Python's `random` module, which was previously unseeded — every
+# retrain produced a different random sample of augmented legit URLs, so
+# false-positive behavior on specific real-world URLs varied noticeably
+# between runs (some fixed, others newly broke) even with no code change.
+# Fixed seed makes iteration on the augmentation logic itself reproducible.
+random.seed(42)
+np.random.seed(42)
+
 try:
     import xgboost as xgb
 except Exception as exc:
@@ -282,12 +291,22 @@ def _random_legit_query() -> str:
     search link would still read as "phishing-shaped". Compose realistic
     long queries procedurally instead of relying on the short fixed list."""
     style = random.random()
-    if style < 0.3:
+    if style < 0.25:
         return ""
-    if style < 0.55:
+    if style < 0.5:
+        # Short, single-param queries (?dl=0, ?v=2, ?tab=1, ?pwd=Ab3xZ9) —
+        # the gap this branch closes: measured empirically, the three
+        # branches below produced query_length either 0 or 30+ with a
+        # complete 0% hole at 11-20 chars and thin 1-10 coverage. Real short
+        # params (a Dropbox "?dl=0", a Zoom "?pwd=...") landed right in that
+        # gap and read as strongly phishing-shaped on length alone.
+        key = random.choice(["dl", "v", "tab", "ref", "lang", "sort", "view", "mode", "pwd", "src"])
+        value = random.choice([str(random.randint(0, 99)), _random_string(random.randint(2, 10))])
+        return f"?{key}={value}"
+    if style < 0.7:
         words = random.sample(QUERY_WORDS, random.randint(3, 8))
         return "?search_query=" + "+".join(words)
-    if style < 0.8:
+    if style < 0.9:
         params = {
             "utm_source": random.choice(["google", "newsletter", "facebook", "twitter"]),
             "utm_medium": random.choice(["cpc", "email", "social", "organic"]),
@@ -299,7 +318,7 @@ def _random_legit_query() -> str:
     return random.choice(LEGIT_QUERY_TEMPLATES)
 
 
-def _augment_legit_paths(df: pd.DataFrame, fraction: float = 0.6) -> pd.DataFrame:
+def _augment_legit_paths(df: pd.DataFrame, fraction: float = 0.85) -> pd.DataFrame:
     legit_idx = df.index[df["label"] == 0]
     sample = random.sample(list(legit_idx), round(len(legit_idx) * fraction))
     for idx in sample:

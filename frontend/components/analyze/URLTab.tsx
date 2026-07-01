@@ -76,9 +76,11 @@ export default function URLTab({ value, onValueChange, result, onResult }: URLTa
 
       {error && <p className="mt-2 text-[10px] text-danger">{error}</p>}
 
-      <div className="mt-3">
-        <ResultCard result={result} />
-      </div>
+      {result && (
+        <div className="mt-3">
+          <ResultCard result={result} />
+        </div>
+      )}
     </div>
   );
 }

@@ -29,7 +29,7 @@ export default function OriginMap() {
           </g>
         ))}
       </svg>
-      <p className="mt-1 text-[8px] text-text-muted">Sample layout — country-level tracking not wired up yet</p>
+      <p className="mt-1 text-[8px] italic text-text-muted opacity-60">Geolocation tracking coming soon</p>
     </div>
   );
 }

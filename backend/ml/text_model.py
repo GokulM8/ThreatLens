@@ -2,6 +2,7 @@
 with a YAML-configured keyword/phrase heuristic (content_keywords.yaml).
 """
 import os
+import scipy.sparse as sp
 import joblib
 import yaml
 
@@ -78,10 +79,14 @@ def combine_verdicts(ml_probability: float, rule_verdict: str, high_confidence: 
 
 def analyze_text(text: str) -> dict:
     bundle = get_bundle()
-    vectorizer = bundle["vectorizer"]
     model = bundle["model"]
 
-    X = vectorizer.transform([text])
+    if "word_vectorizer" in bundle:
+        W = bundle["word_vectorizer"].transform([text])
+        C = bundle["char_vectorizer"].transform([text])
+        X = sp.hstack([W, C])
+    else:
+        X = bundle["vectorizer"].transform([text])
     ml_probability = float(model.predict_proba(X)[0][1])
 
     keyword_result = score_keywords(text)

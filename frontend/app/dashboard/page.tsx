@@ -29,6 +29,7 @@ export default function DashboardPage() {
             greetingName="Gokul"
             newThreatsCount={stats ? stats.phishing_count + stats.deepfake_count : 0}
             highRiskCount={stats?.high_risk_count ?? 0}
+            activeThreats={stats?.active_threats ?? []}
           />
 
           {!stats || isLoading ? (

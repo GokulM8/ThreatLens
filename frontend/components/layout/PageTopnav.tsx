@@ -2,7 +2,8 @@
 
 import { ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { LogoIcon } from "../ui/Logo";
 
 const LINKS = [
@@ -13,12 +14,22 @@ const LINKS = [
   { href: "/insights", label: "Insights" },
 ];
 
+const NAV_HREFS = LINKS.map((l) => l.href);
+
 interface PageTopnavProps {
   rightSlot?: ReactNode;
 }
 
 export default function PageTopnav({ rightSlot }: PageTopnavProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const currentIdx = NAV_HREFS.indexOf(pathname ?? "");
+  const prevPage = currentIdx > 0 ? NAV_HREFS[currentIdx - 1] : null;
+  const nextPage = currentIdx < NAV_HREFS.length - 1 ? NAV_HREFS[currentIdx + 1] : null;
+
+  const prevLabel = prevPage ? LINKS[currentIdx - 1]?.label : null;
+  const nextLabel = nextPage ? LINKS[currentIdx + 1]?.label : null;
 
   return (
     <header className="flex items-center justify-between border-b border-hair border-border bg-card px-6 py-3">
@@ -47,7 +58,30 @@ export default function PageTopnav({ rightSlot }: PageTopnavProps) {
         })}
       </nav>
 
-      <div className="flex min-w-[100px] items-center justify-end">{rightSlot}</div>
+      <div className="flex min-w-[100px] items-center justify-end gap-2">
+        {/* Prev / Next page navigation */}
+        <div className="flex items-center overflow-hidden rounded-btn border border-hair border-border">
+          <button
+            onClick={() => prevPage && router.push(prevPage)}
+            disabled={!prevPage}
+            title={prevLabel ? `← ${prevLabel}` : undefined}
+            className="flex h-7 w-7 items-center justify-center text-text-muted transition-colors hover:bg-tint-gray hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <div className="h-3.5 w-px bg-border" />
+          <button
+            onClick={() => nextPage && router.push(nextPage)}
+            disabled={!nextPage}
+            title={nextLabel ? `${nextLabel} →` : undefined}
+            className="flex h-7 w-7 items-center justify-center text-text-muted transition-colors hover:bg-tint-gray hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+
+        {rightSlot}
+      </div>
     </header>
   );
 }

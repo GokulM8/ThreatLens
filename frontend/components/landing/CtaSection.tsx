@@ -18,7 +18,7 @@ export default function CtaSection() {
         </Link>
         <Link
           href="/dashboard"
-          className="rounded-cta border border-hair border-border bg-white px-6 py-3 text-sm font-bold text-text-primary"
+          className="rounded-cta border-[1.5px] border-accent bg-white px-6 py-3 text-sm font-bold text-accent"
         >
           View dashboard
         </Link>

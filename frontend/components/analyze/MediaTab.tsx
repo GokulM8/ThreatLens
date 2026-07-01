@@ -87,9 +87,11 @@ export default function MediaTab({ onScanned }: { onScanned: (result: LastScanRe
 
       {error && <p className="mt-2 text-[10px] text-danger">{error}</p>}
 
-      <div className="mt-3">
-        <ResultCard result={result} placeholder="Upload a file above to scan" />
-      </div>
+      {result && (
+        <div className="mt-3">
+          <ResultCard result={result} placeholder="Upload a file above to scan" />
+        </div>
+      )}
     </div>
   );
 }

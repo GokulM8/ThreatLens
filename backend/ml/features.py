@@ -50,6 +50,7 @@ SHORTENING_SERVICES = [
     "rebrand.ly", "clck.ru", "shorturl.at",
 ]
 
+
 # Homoglyph normalization for the lookalike-score check: maps characters
 # commonly substituted in visual-spoofing domains (z3rodha, gr0ww, upst0x)
 # back to the letter they're impersonating before comparing to known brands.

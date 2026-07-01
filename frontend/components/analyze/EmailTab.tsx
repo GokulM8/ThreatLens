@@ -45,9 +45,11 @@ export default function EmailTab({ onScanned }: { onScanned: (result: LastScanRe
 
       {error && <p className="mt-2 text-[10px] text-danger">{error}</p>}
 
-      <div className="mt-3">
-        <ResultCard result={result} placeholder="Paste email content above to scan" />
-      </div>
+      {result && (
+        <div className="mt-3">
+          <ResultCard result={result} placeholder="Paste email content above to scan" />
+        </div>
+      )}
     </div>
   );
 }

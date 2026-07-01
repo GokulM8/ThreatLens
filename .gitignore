@@ -9,6 +9,11 @@ __pycache__/
 .venv/
 backend/ml/artifacts/*.pkl
 backend/data/communications_registry.json
+# Training data — large files, not tracked in git
+backend/data/*.tar
+backend/data/*.tar.gz
+backend/data/*.txt
+backend/data/*.csv
 ml/data/*.csv
 
 .DS_Store
